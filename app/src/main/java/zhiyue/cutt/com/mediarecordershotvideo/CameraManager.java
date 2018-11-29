@@ -1,9 +1,16 @@
 package zhiyue.cutt.com.mediarecordershotvideo;
 
 import android.content.Context;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.graphics.ImageFormat;
+import android.graphics.Matrix;
 import android.graphics.SurfaceTexture;
 import android.hardware.Camera;
+import android.hardware.Sensor;
+import android.hardware.SensorEvent;
+import android.hardware.SensorEventListener;
+import android.hardware.SensorManager;
 import android.media.MediaRecorder;
 import android.os.Environment;
 import android.os.Handler;
@@ -22,6 +29,8 @@ import java.io.IOException;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
+
+import static android.graphics.Bitmap.createBitmap;
 
 public class CameraManager {
 
@@ -249,6 +258,10 @@ public class CameraManager {
         private MediaRecorder mMediaRecorder;
         private String videoPath;
         private Camera.Parameters mParams;
+        private int cameraAngle = 90;//摄像头角度   默认为90度
+        private int angle = 0;
+        private int rotation = 0;
+        private SensorManager sm = null;
 
         public CameraThread() {
             super("Camera thread");
@@ -296,7 +309,7 @@ public class CameraManager {
                     mViewHeight = mPictureSize.height;
                     byte[] preAllocedBuffer = new byte[mViewWidth * mViewHeight * ImageFormat.getBitsPerPixel(ImageFormat.NV21)];
                     mCamera.addCallbackBuffer(preAllocedBuffer);
-                    mCamera.setPreviewCallback(this);
+//                    mCamera.setPreviewCallback(this);
                 } catch (final RuntimeException e) {
                     if (mCamera != null) {
                         mCamera.release();
@@ -310,11 +323,11 @@ public class CameraManager {
             if (mCamera != null && msurfaceView != null) {
                 try {
                     mCamera.setPreviewDisplay(msurfaceView.getHolder());
-                    initMediaRecorder();
                 } catch (IOException e) {
                     e.printStackTrace();
                 }
             }
+            registerSensorManager();
         }
 
 
@@ -400,6 +413,7 @@ public class CameraManager {
             }
             // apply rotation setting
             mCamera.setDisplayOrientation(degrees);
+            cameraAngle = degrees;
         }
 
         private static Camera.Size getClosestSupportedSize(List<Camera.Size> supportedSizes, final int requestedWidth, final int requestedHeight) {
@@ -425,6 +439,7 @@ public class CameraManager {
                 mPreviewSize = null;
                 mPictureSize = null;
                 nv21Data = null;
+                unregisterSensorManager();
             }
         }
 
@@ -439,13 +454,131 @@ public class CameraManager {
             startPreview(mViewWidth, mViewHeight, msurfaceView, false, false);
         }
 
-        public void takePhoto(ICallback<String> callback) {
-            LogUtils.d("CameraThread takePhoto() callback = " + callback);
-            mCamera.setPreviewCallback(this);
-            String bitmapPath = CameraImageUtils.takePhoto(nv21Data, mPreviewSize.width, mPreviewSize.height);
-            if (callback != null) {
-                callback.onResult(bitmapPath);
+        void registerSensorManager() {
+            if (sm == null) {
+                sm = (SensorManager) CCApplication.getInstance().getSystemService(Context.SENSOR_SERVICE);
             }
+            sm.registerListener(sensorEventListener, sm.getDefaultSensor(Sensor.TYPE_ACCELEROMETER), SensorManager.SENSOR_DELAY_NORMAL);
+        }
+
+        void unregisterSensorManager() {
+            if (sm == null) {
+                sm = (SensorManager) CCApplication.getInstance().getSystemService(Context.SENSOR_SERVICE);
+            }
+            sm.unregisterListener(sensorEventListener);
+        }
+
+        private SensorEventListener sensorEventListener = new SensorEventListener() {
+            @Override
+            public void onSensorChanged(SensorEvent event) {
+                if (Sensor.TYPE_ACCELEROMETER != event.sensor.getType()) {
+                    return;
+                }
+                float[] values = event.values;
+                angle = AngleUtil.getSensorAngle(values[0], values[1]);
+                rotationAnimation();
+            }
+
+            @Override
+            public void onAccuracyChanged(Sensor sensor, int accuracy) {
+            }
+        };
+
+
+        //切换摄像头icon跟随手机角度进行旋转
+        private void rotationAnimation() {
+            if (rotation != angle) {
+                int start_rotaion = 0;
+                int end_rotation = 0;
+                switch (rotation) {
+                    case 0:
+                        start_rotaion = 0;
+                        switch (angle) {
+                            case 90:
+                                end_rotation = -90;
+                                break;
+                            case 270:
+                                end_rotation = 90;
+                                break;
+                        }
+                        break;
+                    case 90:
+                        start_rotaion = -90;
+                        switch (angle) {
+                            case 0:
+                                end_rotation = 0;
+                                break;
+                            case 180:
+                                end_rotation = -180;
+                                break;
+                        }
+                        break;
+                    case 180:
+                        start_rotaion = 180;
+                        switch (angle) {
+                            case 90:
+                                end_rotation = 270;
+                                break;
+                            case 270:
+                                end_rotation = 90;
+                                break;
+                        }
+                        break;
+                    case 270:
+                        start_rotaion = 90;
+                        switch (angle) {
+                            case 0:
+                                end_rotation = 0;
+                                break;
+                            case 180:
+                                end_rotation = 180;
+                                break;
+                        }
+                        break;
+                }
+                rotation = angle;
+            }
+        }
+
+        /**
+         * 拍照
+         */
+        private int nowAngle;
+
+        public void takePhoto(final ICallback<String> callback) {
+            if (mCamera == null) {
+                return;
+            }
+            switch (cameraAngle) {
+                case 90:
+                    nowAngle = Math.abs(angle + cameraAngle) % 360;
+                    break;
+                case 270:
+                    nowAngle = Math.abs(cameraAngle - angle);
+                    break;
+                default:
+                    break;
+            }
+            mCamera.takePicture(null, null, new Camera.PictureCallback() {
+                @Override
+                public void onPictureTaken(byte[] bytes, Camera camera) {
+                    camera.startPreview();
+                    Bitmap bitmap = BitmapFactory.decodeByteArray(bytes, 0, bytes.length);
+                    Matrix matrix = new Matrix();
+                    if (mCameraId == mBackCameraId) {
+                        matrix.setRotate(nowAngle);
+                    } else if (mCameraId == mFrontCameraId) {
+                        matrix.setRotate(360 - nowAngle);
+                        matrix.postScale(-1, 1);
+                    }
+                    bitmap = createBitmap(bitmap, 0, 0, bitmap.getWidth(), bitmap.getHeight(), matrix, true);
+                    String bitMapFileName = Environment.getExternalStorageDirectory().getPath() + File.separator + "DCIM/monkey" + File.separator + System.currentTimeMillis() + ".jpg";
+                    StorageUtil.saveBitmap(bitMapFileName, bitmap);
+                    if (callback != null) {
+                        callback.onResult(bitMapFileName);
+                    }
+                }
+            });
         }
 
         public void initMediaRecorder() {
@@ -486,6 +619,7 @@ public class CameraManager {
             LogUtils.d("CameraThread startShotVideo()");
             try {
                 mCamera.setPreviewCallback(null);
+                initMediaRecorder();
                 String path = Environment.getExternalStorageDirectory().getPath() + File.separator + "DCIM/monkey" + File.separator;
                 File file = new File(path);
                 if (!file.exists()) {

@@ -40,6 +40,17 @@ public class MainActivity extends AppCompatActivity {
         mShowVideo.setZOrderOnTop(true);
     }
 
+    @Override
+    protected void onResume() {
+        super.onResume();
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+
+    }
+
     public void startPlayVideo(final String videoPath) {
         mShowVideo.setVideoPath(videoPath);
         mShowVideo.start();
