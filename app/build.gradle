@@ -4,7 +4,7 @@ android {
     compileSdkVersion 28
     defaultConfig {
         applicationId "zhiyue.cutt.com.mediarecordershotvideo"
-        minSdkVersion 16
+        minSdkVersion 21
         targetSdkVersion 28
         versionCode 1
         versionName "1.0"
@@ -15,6 +15,10 @@ android {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }
+    }
+
+    aaptOptions {
+        noCompress "tflite"
     }
 }
 
@@ -34,6 +38,7 @@ dependencies {
     implementation 'com.github.bumptech.glide:okhttp3-integration:1.5.0@aar'
     implementation 'com.squareup.okhttp3:logging-interceptor:3.8.1'
     implementation fileTree(dir: "$buildDir/native-libs", include: 'native-libs.jar')
+    implementation 'org.tensorflow:tensorflow-lite:0.1.7'
 }
 
 task nativeLibsToJar(type: Jar, description: 'create a jar archive of the native libs') {

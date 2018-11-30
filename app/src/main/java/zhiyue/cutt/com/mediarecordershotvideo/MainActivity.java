@@ -1,5 +1,6 @@
 package zhiyue.cutt.com.mediarecordershotvideo;
 
+import android.content.Intent;
 import android.media.MediaPlayer;
 import android.os.Bundle;
 import android.support.v7.app.AppCompatActivity;
@@ -22,6 +23,7 @@ import java.util.List;
 import butterknife.BindView;
 import butterknife.ButterKnife;
 import butterknife.OnClick;
+import zhiyue.cutt.com.mediarecordershotvideo.tensorflow.TensorFlowActivity;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -54,12 +56,13 @@ public class MainActivity extends AppCompatActivity {
             LogUtils.d("onResume()  mLoaderCallback.onManagerConnected()");
             mLoaderCallback.onManagerConnected(LoaderCallbackInterface.SUCCESS);
         }
+        CameraManager.getInstance().startPreview(mSurfaceView, true);
     }
 
     @Override
     protected void onPause() {
         super.onPause();
-
+        CameraManager.getInstance().stopPreview(true);
     }
 
     public void startPlayVideo(final String videoPath) {
@@ -146,6 +149,10 @@ public class MainActivity extends AppCompatActivity {
                                 .fitCenter()
                                 .dontAnimate()
                                 .into(mShowPhoto);
+
+                        Intent intent = new Intent(MainActivity.this, TensorFlowActivity.class);
+                        intent.putExtra("ImagePath", picPath);
+                        startActivity(intent);
                     }
                 });
             }
