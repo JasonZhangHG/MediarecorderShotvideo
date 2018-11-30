@@ -13,6 +13,10 @@ import com.blankj.utilcode.util.LogUtils;
 import com.blankj.utilcode.util.PermissionUtils;
 import com.bumptech.glide.Glide;
 
+import org.opencv.android.BaseLoaderCallback;
+import org.opencv.android.LoaderCallbackInterface;
+import org.opencv.android.OpenCVLoader;
+
 import java.util.List;
 
 import butterknife.BindView;
@@ -43,6 +47,13 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onResume() {
         super.onResume();
+        if (!OpenCVLoader.initDebug()) {
+            LogUtils.d("onResume()  OpenCVLoader.initAsync()");
+            OpenCVLoader.initAsync(OpenCVLoader.OPENCV_VERSION, this, mLoaderCallback);
+        } else {
+            LogUtils.d("onResume()  mLoaderCallback.onManagerConnected()");
+            mLoaderCallback.onManagerConnected(LoaderCallbackInterface.SUCCESS);
+        }
     }
 
     @Override
@@ -147,7 +158,26 @@ public class MainActivity extends AppCompatActivity {
     }
 
     @OnClick(R.id.btn_switch_camera_main_activity)
-    public void sweeitchCamera() {
+    public void switchCamera() {
         CameraManager.getInstance().switchCamera();
     }
+
+    /***
+     * opencv库 加载并初始化回调的函数
+     */
+    private BaseLoaderCallback mLoaderCallback = new BaseLoaderCallback(this) {
+        @Override
+        public void onManagerConnected(int status) {
+            super.onManagerConnected(status);
+            switch (status) {
+                case BaseLoaderCallback.SUCCESS:
+                    LogUtils.d("OpenCv load success");
+                    break;
+                default:
+                    super.onManagerConnected(status);
+                    LogUtils.d("OpenCv load failed");
+                    break;
+            }
+        }
+    };
 }
