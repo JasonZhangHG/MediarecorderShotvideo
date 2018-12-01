@@ -49,11 +49,11 @@
         <activity
             android:name=".VideoPalyActivity"
             android:screenOrientation="portrait"/>
-
         <activity
             android:name=".tensorflow.TensorFlowActivity"
             android:screenOrientation="portrait"/>
-
+        <activity
+            android:name=".opengl.OpenGLActivity"/>
     </application>
 
 </manifest>

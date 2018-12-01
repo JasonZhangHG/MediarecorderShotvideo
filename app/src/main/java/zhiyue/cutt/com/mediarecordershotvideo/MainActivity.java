@@ -23,6 +23,7 @@ import java.util.List;
 import butterknife.BindView;
 import butterknife.ButterKnife;
 import butterknife.OnClick;
+import zhiyue.cutt.com.mediarecordershotvideo.opengl.OpenGLActivity;
 import zhiyue.cutt.com.mediarecordershotvideo.tensorflow.TensorFlowActivity;
 
 public class MainActivity extends AppCompatActivity {
@@ -33,6 +34,7 @@ public class MainActivity extends AppCompatActivity {
     @BindView(R.id.btn_switch_camera_main_activity) Button mSwitchCamera;
     @BindView(R.id.iv_show_photo_main_activity) ImageView mShowPhoto;
     @BindView(R.id.vv_show_video_main_activity) VideoView mShowVideo;
+    @BindView(R.id.btn_to_gl_main_activity) Button mToGl;
     private int clickShotVideoCount;
 
     @Override
@@ -167,6 +169,11 @@ public class MainActivity extends AppCompatActivity {
     @OnClick(R.id.btn_switch_camera_main_activity)
     public void switchCamera() {
         CameraManager.getInstance().switchCamera();
+    }
+
+    @OnClick(R.id.btn_to_gl_main_activity)
+    public void toGL() {
+        startActivity(new Intent(MainActivity.this, OpenGLActivity.class));
     }
 
     /***
